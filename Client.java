@@ -13,7 +13,7 @@ import java.util.Scanner;
 public class Client
 {
     private Socket sock = null;             // socket for server connection
-    private DataOutputStream output = null; // output stream to server
+    private DataOutputStream sOutput = null; // output stream to server
     private DataInputStream sInput = null;  // input stream from server
 
     /**
@@ -36,15 +36,37 @@ public class Client
             sock = new Socket(addr, port);   // create client socket
             System.out.println("Connected");
 
-            output = new DataOutputStream(sock.getOutputStream()); // create output stream
+            sOutput = new DataOutputStream(sock.getOutputStream()); // create output stream
             sInput = new DataInputStream(new BufferedInputStream(sock.getInputStream())); // create input stream
             Scanner scanner = new Scanner(System.in); // scanner for reading user input
             String sIn = ""; // used to store server messages
+            String in = "";  // used to store client messages
 
             boolean running = true; // used to control the game loop
             while (running)
             {
-                // add client game interaction here
+                try
+                {
+                    sIn = sInput.readUTF();
+                }
+                catch(IOException e)
+                {
+                    System.out.println("Error receiving from server: " + e.getMessage());
+                }
+
+                System.out.println(sIn);
+
+                in = scanner.nextLine();
+
+                try
+                {
+                    sOutput.writeUTF(in);
+                    sOutput.flush();
+                }
+                catch(IOException e)
+                {
+                    System.out.println("Error sending to server: " + e.getMessage());
+                }
             }
         }
         catch (UnknownHostException u) // handle invalid server address
@@ -62,7 +84,7 @@ public class Client
             // close resources
             try 
             {
-                if (output != null) output.close();
+                if (sOutput != null) sOutput.close();
                 if (sInput != null) sInput.close();
                 if (sock != null) sock.close();
             } 
