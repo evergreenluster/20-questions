@@ -1,145 +1,119 @@
 import java.io.*;
 import java.net.*;
 import java.util.Vector;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * @class Server
- * @brief Server class that implements a number guessing game over socket connection.
+ * @brief Server implementation for a multiplayer 20 Questions game
  *
- * This server accepts a client connection, generates a random number,
- * and manages the game where the client tries to guess the number.
- * The server provides feedback after each guess and tracks attempts.
+ * @details This server manages client connections, player matchmaking,
+ * and game sessions using a multi-threaded architecture. It accepts
+ * connections on a specified port and assigns each client to a handler
+ * thread from a fixed-size thread pool.
  */
 public class Server 
 {
-    private Socket clientSocket = null;       // client socket
-    private ServerSocket serverSocket = null; // server socket
-    private DataInputStream input = null;   // input stream from client
-    private DataOutputStream output = null; // output stream to client
-    private Vector<Player> waitingQueue = new Vector<>();    
-    private Vector<Player> playingQueue = new Vector<>();
+    private Socket clientSocket;         
+    private ServerSocket serverSocket;   
 
     /**
-     * @brief Constructor that initializes the server and runs the game
+     * @brief Thread pool that manages concurrent client connections
+     * 
+     * @details Limited to 20 concurrent threads to prevent resource exhaustion
+     * while supporting multiple simultaneous game sessions. Static to allow
+     * access across all server components.
+     */
+    protected static ExecutorService threadPool = Executors.newFixedThreadPool(20);
+
+    /**
+     * @brief Used to keep track of all players currently connected
+     * 
+     * @details Makes resource cleanup easier 
+     */
+    protected static Vector<Player> allPlayers = new Vector<>();
+
+    /**
+     * @brief Tracks players waiting to be matched with opponents
+     * 
+     * @details Players are added here when they connect and removed when matched
+     * with another player to form a game session. Used by the matchmaking system.
+     */
+    protected static Vector<Player> waitingQueue = new Vector<>();   
+
+    /**
+     * @brief Tracks players currently participating in active games
+     * 
+     * @details Players move here from the waitingQueue when matched and return to
+     * waitingQueue when their game ends. Used to monitor active game sessions.
+     */
+    protected static Vector<Player> playingQueue = new Vector<>();   
+    
+    /**
+     * @brief Constructor that initializes and runs the server
      * @param port The port number on which the server listens for connections
      * 
-     * The constructor:
-     * - Creates a server socket on the specified port
-     * - Accepts a client connection
-     * - Generates a random number for the client to guess
-     * - Manages the game loop, processing guesses and providing feedback
-     * - Cleans up resources when the game ends
+     * @details Creates a server socket that continuously accepts client connections
+     * and passes each connected client to a LogPlayer handler running in the thread 
+     * pool. The server runs indefinitely until interrupted by an exception or
+     * external termination signal.
      */
     public Server(int port)
     {
         try
         {
-            serverSocket = new ServerSocket(port);    // create server socket
-            System.out.println("Server started.");
+            serverSocket = new ServerSocket(port);  // create server socket
+            System.out.println("Server started.\n");
 
-            String username = ""; // used to store username from client
-
+            // implement a more graceful shutdown mechanism
+            // at the moment, it only terminates if there's an exception
+            // or ctrl+c is pressed (my method for testing)
             while (true)
             {
-                if (waitingQueue.size() < 2)
-                {
-                    System.out.println("Waiting for players...");
-                }
-
-                clientSocket = serverSocket.accept();
-                System.out.println("Player connected.");
-
-                input = new DataInputStream(new BufferedInputStream(clientSocket.getInputStream()));
-                output = new DataOutputStream(clientSocket.getOutputStream());
-
-                output.writeUTF("\n|| 20 Questions ||\n");
-                output.flush();
-    
-                try
-                {
-                    try 
-                    {
-                        output.writeUTF("Enter your username: ");
-                        output.flush();
-                    }
-                    catch (IOException m)
-                    {
-                        System.out.println("Failed to send message to client: " + m.getMessage());
-
-                        try
-                        {
-                            clientSocket.close();
-                        }
-                        catch (IOException c)
-                        {
-                            System.out.println("Error closing socket after connection issue.");
-                        }
-                    }
+                System.out.println("Waiting for players...\n");
                 
-                    username = input.readUTF(); // get player's username
-                    
-                    Player newPlayer = new Player(clientSocket, username);
-                    waitingQueue.addElement(newPlayer);
-                }
-                catch (IOException u)
-                {
-                    System.out.println("Connection lost while collecting username.");
+                clientSocket = serverSocket.accept();            // accept client connection
+                System.out.println("Player connected.\n");    
 
-                    try
-                    {
-                        clientSocket.close();
-                    }
-                    catch (IOException c)
-                    {
-                        System.out.println("Error closing socket after connection issue.");
-                    }
-
-                    return;
-                }
-
-                if (waitingQueue.size() == 2)
-                {
-                    Player player1 = waitingQueue.firstElement();
-                    waitingQueue.removeElementAt(0);
-                    Player player2 = waitingQueue.firstElement();
-                    waitingQueue.removeElementAt(0);
-
-                    playingQueue.addElement(player1);
-                    playingQueue.addElement(player2);
-
-                    GameSession gameSession = new GameSession(player1, player2);
-
-                    Thread gameThread = new Thread(gameSession);
-
-                    gameThread.start();
-                }
+                threadPool.submit(new LogPlayer(clientSocket));  // pass client to handler thread
             }
         }
-        catch(IOException i)
+        catch(IOException e)
         {
-            System.out.println(i);
+            System.out.println("Error creating server socket: " + e.getMessage());
         }
         finally 
         {   
             // close resources
             try 
             {
-                if (output != null) output.close();
-                if (input != null) input.close();
+                if (serverSocket != null) serverSocket.close();
+                
                 if (clientSocket != null) clientSocket.close();
+                
+                threadPool.shutdown();
+                
+                // close all player connections
+                for (Player player : allPlayers) 
+                {
+                    if (player.getSocket() != null) player.getSocket().close();
+                }
             } 
             catch (IOException e) 
             {
-                System.out.println("Error closing resources: " + e);
+                System.out.println("Error closing resources: " + e.getMessage());
             }
         }
     }
 
+    // receive port number from command line arguments (future version)
+
     /**
-     * @brief Main method to start the server
+     * @brief Entry point for the game server application
      * @param args Command line arguments (not used)
      * 
-     * Creates a new Server instance on port 5000 to start the game.
+     * @details Creates a Server instance on port 5000 to start the game server.
      */
     public static void main(String args[])
     {
