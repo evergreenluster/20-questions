@@ -34,8 +34,7 @@ public class Client
             out = new DataOutputStream(clientSocket.getOutputStream());
             in = new DataInputStream(new BufferedInputStream(clientSocket.getInputStream())); 
 
-            boolean running = true;  // used to control the game loop
-            while (running)
+            while (true)
             {
                 try
                 {
@@ -43,12 +42,19 @@ public class Client
                 }
                 catch(IOException e)
                 {
-                    System.out.println("Error receiving from server: " + e.getMessage());
+                    System.out.println("\nDisconnected from server.");  
+
+                    if (out != null) out.close();
+                    if (in != null) in.close();
+                    if (clientSocket != null) clientSocket.close();
+                    scanner.close();
+
+                    break;
                 }
 
                 System.out.print(message);
 
-                if (message.charAt(message.length() - 1) == ' ')
+                if (message.charAt(message.length() - 2) == ':')
                 {
                     input = scanner.nextLine();
 
@@ -75,21 +81,6 @@ public class Client
         catch (IOException e)  // handle connection errors
         {
             System.out.println(e);
-        }
-        finally
-        {
-            // close resources
-            try 
-            {
-                if (out != null) out.close();
-                if (in != null) in.close();
-                if (clientSocket != null) clientSocket.close();
-                scanner.close();
-            } 
-            catch (IOException e) 
-            {
-                System.out.println("Error closing resources: " + e);
-            }
         }
     }
 

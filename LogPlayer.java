@@ -37,14 +37,12 @@ public class LogPlayer implements Runnable
             
             Player player = new Player(clientSocket, username, in, out);
             Server.allPlayers.addElement(player);
-            Server.waitingQueue.addElement(player);
-
             
-            Server.threadPool.submit(new MatchPlayer(player));
+            Server.threadPool.submit(new PlayerManager(player));
         }
         catch (IOException e)
         {
-            System.out.println("Connection lost while collecting username.");
+            System.out.println("Error while collecting username: " + e.getMessage());
 
             try
             {

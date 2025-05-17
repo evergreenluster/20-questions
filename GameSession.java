@@ -314,7 +314,7 @@ class GameSession implements Runnable
             // phase 4: question and answer process
             boolean win = false;
             int count = 0;
-            while(!win && count <= 3)
+            while(!win && count < 20)
             {
                 String question = "";
                 char answerIn = ' ';
@@ -358,10 +358,10 @@ class GameSession implements Runnable
             }
 
             // phase 5.1: determining win/loss
-            if (count == 3)
+            if (count == 20)
             {
-                sendToGM("\nYou won!" + guesser.getUsername() + " ran out of questions.");
-                sendToGuesser("\nYou lose! The answer was " + subject + ".");
+                sendToGM("\nYou won! " + guesser.getUsername() + " ran out of questions.");
+                sendToGuesser("\nYou lose! The answer was '" + subject + "'.");
             }
 
             // phase 6: play again
@@ -375,7 +375,7 @@ class GameSession implements Runnable
 
             while (decisionGM != 'y' && decisionGM != 'n')
             {
-                sendToGM("\n(Y)es, (N)o\nDecision: ");
+                sendToGM("\n(Y)es, (N)o\nEnter your decision: ");
 
                 decisionGM = receiveFromGM().toLowerCase().charAt(0);
             }

@@ -39,6 +39,8 @@ public class Player
         this.output = output;
     }
 
+    
+
     /**
      * @brief Retrieves the player's socket connection
      * @return The Socket object connecting to the player's client

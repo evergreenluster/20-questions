@@ -26,17 +26,21 @@ public class MatchPlayer implements Runnable
      * @brief Executes the player matching process
      * 
      * @details This method:
-     * 1. Notifies the player they're waiting to be matched
-     * 2. Pauses briefly to allow other players to join the queue
-     * 3. Continuously checks for at least two players in the waiting queue
-     * 4. When two players are available, creates a game session and starts it
+     * 1. Adds player to the waiting queue
+     * 2. Notifies the player they're waiting to be matched
+     * 3. Pauses briefly to allow other players to join the queue
+     * 4. Continuously checks for at least two players in the waiting queue
+     * 5. When two players are available, creates a game session and starts it
      * 
      * Note: This method contains a potentially blocking infinite loop
      * that waits until another player becomes available for matching.
      */
     public void run()
     {
-        // phase 1: notifies the player
+        // phase 1: adds player to the waiting queue
+        Server.waitingQueue.addElement(player);
+
+        // phase 2: notifies the player
         try 
         {
             player.getOutputStream().writeUTF("\nWaiting to be matched...");
@@ -46,7 +50,7 @@ public class MatchPlayer implements Runnable
             System.out.println("Error sending to client: " + e.getMessage());
         }
 
-        // phase 2: pauses to allow other players to join
+        // phase 3: pauses to allow other players to join
         try
         {
             Thread.sleep(5000);
@@ -58,11 +62,11 @@ public class MatchPlayer implements Runnable
 
         // implement timeouts in case there isn't a match
         // return play to main menu
-        
-        // phase 3: continuously checks if there's at least two players
+
+        // phase 4: continuously checks if there's at least two players
         while(true)
         {
-            // phase 4: creates a game session and starts it if there's at least two players
+            // phase 5: creates a game session and starts it if there's at least two players
             if (Server.waitingQueue.size() >= 2)
             {
                 Player player1 = Server.waitingQueue.firstElement();
@@ -75,7 +79,7 @@ public class MatchPlayer implements Runnable
 
                 Server.threadPool.submit(new GameSession(player1, player2));
 
-                System.out.println("Game session created.\n");
+                System.out.println("\nGame session created.\n");
 
                 break;
             }

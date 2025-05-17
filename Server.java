@@ -64,24 +64,24 @@ public class Server
         try
         {
             serverSocket = new ServerSocket(port);  // create server socket
-            System.out.println("Server started.\n");
+            System.out.println("Server started.");
 
             // implement a more graceful shutdown mechanism
             // at the moment, it only terminates if there's an exception
             // or ctrl+c is pressed (my method for testing)
             while (true)
             {
-                System.out.println("Waiting for players...\n");
+                System.out.println("\nWaiting for players...");
                 
                 clientSocket = serverSocket.accept();            // accept client connection
-                System.out.println("Player connected.\n");    
+                System.out.println("\nPlayer connected.");    
 
                 threadPool.submit(new LogPlayer(clientSocket));  // pass client to handler thread
             }
         }
         catch(IOException e)
         {
-            System.out.println("Error creating server socket: " + e.getMessage());
+            System.out.println("\nError creating server socket: " + e.getMessage());
         }
         finally 
         {   
@@ -89,7 +89,6 @@ public class Server
             try 
             {
                 if (serverSocket != null) serverSocket.close();
-                
                 if (clientSocket != null) clientSocket.close();
                 
                 threadPool.shutdown();
@@ -102,7 +101,7 @@ public class Server
             } 
             catch (IOException e) 
             {
-                System.out.println("Error closing resources: " + e.getMessage());
+                System.out.println("\nError closing resources: " + e.getMessage());
             }
         }
     }
