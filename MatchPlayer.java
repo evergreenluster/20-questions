@@ -1,5 +1,10 @@
 import java.io.*;
 
+/*
+ *  future enhancements:
+ *  - implement timeout in case there isn't a match (return control to PlayerManager)
+ */
+
 /**
  * @class MatchPlayer
  * @brief Handles matching up players and starting their game session.
@@ -15,6 +20,7 @@ public class MatchPlayer implements Runnable
 
     /**
      * @brief Initializes the matchmaker for a specific player
+     * 
      * @param player The player to be matched with an opponent
      */
     public MatchPlayer(Player player)
@@ -37,10 +43,8 @@ public class MatchPlayer implements Runnable
      */
     public void run()
     {
-        // phase 1: adds player to the waiting queue
         Server.waitingQueue.addElement(player);
 
-        // phase 2: notifies the player
         try 
         {
             player.getOutputStream().writeUTF("\nWaiting to be matched...");
@@ -50,7 +54,6 @@ public class MatchPlayer implements Runnable
             System.out.println("Error sending to client: " + e.getMessage());
         }
 
-        // phase 3: pauses to allow other players to join
         try
         {
             Thread.sleep(5000);
@@ -60,13 +63,8 @@ public class MatchPlayer implements Runnable
             Thread.currentThread().interrupt();
         }
 
-        // implement timeouts in case there isn't a match
-        // return play to main menu
-
-        // phase 4: continuously checks if there's at least two players
         while(true)
         {
-            // phase 5: creates a game session and starts it if there's at least two players
             if (Server.waitingQueue.size() >= 2)
             {
                 Player player1 = Server.waitingQueue.firstElement();
@@ -74,12 +72,12 @@ public class MatchPlayer implements Runnable
                 Player player2 = Server.waitingQueue.firstElement();
                 Server.waitingQueue.removeElementAt(0);
 
-                Server.playingQueue.addElement(player1);
-                Server.playingQueue.addElement(player2);
+                Server.playingList.addElement(player1);
+                Server.playingList.addElement(player2);
 
                 Server.threadPool.submit(new GameSession(player1, player2));
 
-                System.out.println("\nGame session created.\n");
+                System.out.println("\nGame session created.");
 
                 break;
             }

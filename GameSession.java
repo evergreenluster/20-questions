@@ -1,12 +1,18 @@
 import java.io.*;
 import java.util.Random;
-import javax.swing.plaf.basic.BasicInternalFrameTitlePane;
+import java.util.concurrent.*;
+
+/*
+ *  future enhancements: 
+ *  - handle player disconnect mid-game 
+ *  - function to handle graceful exit when playAgain is false
+ *  - handle empty answer input edge case 
+ */
 
 /**
- * @class GameSession
- * @brief Manages a game session between two players in the 20 Questions game
+ * Manages a game session between two players in the 20 Questions game.
  * 
-* @details GameSession handles the complete lifecycle of a game match between
+ * GameSession handles the complete lifecycle of a game match between
  * two players, including role assignment (Game Master vs Guesser), message
  * passing, game state management, and win/loss conditions. It runs in its own
  * thread to allow multiple concurrent games on the server.
@@ -14,10 +20,9 @@ import javax.swing.plaf.basic.BasicInternalFrameTitlePane;
 class GameSession implements Runnable 
 {
      /**
-     * @enum Answer
-     * @brief Represents possible answer types from the Game Master
+     * Represents possible answer types from the Game Master.
      * 
-     * @details Used to standardize communication between players. The Game Master
+     * Used to standardize communication between players. The Game Master
      * responds to the Guesser's questions using one of these answer types.
      */
     public enum Answer
@@ -30,8 +35,9 @@ class GameSession implements Runnable
         private final char inputChar; // character representing the answer in user input
 
         /**
-         * @brief Constructor that maps answers to their input characters
-         * @param inputChar The character that represents this answer
+         * Constructor that maps answers to their input characters.
+         * 
+         * @param inputChar The character that represents this answer.
          */
         Answer(char inputChar)
         {
@@ -39,8 +45,9 @@ class GameSession implements Runnable
         }
 
         /**
-         * @brief Retrieves the character associated with this answer
-         * @return The character representation of this answer
+         * Retrieves the character associated with this answer.
+         * 
+         * @return The character representation of this answer.
          */
         public char getInputChar()
         {
@@ -48,9 +55,10 @@ class GameSession implements Runnable
         }
 
         /**
-         * @brief Converts a character input to the corresponding Answer
-         * @param c The character to convert
-         * @return The Answer enum value, or null if not recognized
+         * Converts a character input to the corresponding Answer.
+         * 
+         * @param c The character to convert.
+         * @return The Answer enum value, or null if not recognized.
          */
         public static Answer fromChar(char c)
         {
@@ -67,27 +75,35 @@ class GameSession implements Runnable
         }
     }
 
-    private final Player player1;  // first player in the game session
-    private final Player player2;  // second player in the game session
+    // future enhancement: add gameID functionality for easier debugging
 
-    // player roles (will reference player1 and player2 once roles are assigned)
-    private Player gameMaster;    // player who chooses the subject
-    private Player guesser;       // player who asks the questions
+    /** First player connected to this game session. */
+    private final Player player1;
+    /** Second player connected to this game session. */
+    private final Player player2;  
 
-    // input and output streams for both players
+    /** Player assigned the Game Master role (chooses the subject). */
+    private Player gameMaster;    
+    /** Player assigned the Guesser role (asks questions). */
+    private Player guesser;    
+
+    /** Input stream for receiving messages from player1. */
     private final DataInputStream inP1;
+    /** Input stream for receiving messages from player2. */
     private final DataInputStream inP2;
+    /** Output stream for sending messages to player1. */
     private final DataOutputStream outP1;
+    /** Output stream for sending messages to player2. */
     private final DataOutputStream outP2;
 
     /**
-     * @brief Initializes a game session between two players
+     * Initializes a game session between two players.
+     * 
+     * Sets up the communication streams and randomly assigns
+     * initial player roles (Game Master vs Guesser).
      * 
      * @param player1 The first player
      * @param player2 The second player
-     * 
-     * @details Sets up the communication streams and randomly assigns
-     * initial player roles (Game Master vs Guesser).
      */
     public GameSession(Player player1, Player player2)
     {
@@ -103,13 +119,13 @@ class GameSession implements Runnable
     }
  
     /**
-     * @brief Randomly assigns the Game Master and Guesser roles
+     * Randomly assigns the Game Master and Guesser roles.
      * 
-     * @param player1 The first player
-     * @param player2 The second player
-     * 
-     * @details Uses a random number generator to assign roles fairly
+     * Uses a random number generator to assign roles fairly
      * between the two players.
+     * 
+     * @param player1 The first player.
+     * @param player2 The second player.
      */
     private void assignRoles(Player player1, Player player2)
     {
@@ -125,12 +141,14 @@ class GameSession implements Runnable
     }
 
     /**
-     * @brief Sends a message to the Game Master
+     * Sends a message to the Game Master.
      * 
-     * @param message The message to send
+     * Determines which player is the Game Master and sends the message 
+     * to the appropriate output stream. If a network error occurs 
+     * (typically due to client disconnect), the error is logged but 
+     * the game continues.
      * 
-     * @details Determines which player is the Game Master and
-     * sends the message to the appropriate output stream.
+     * @param message The message to send.
      */
     private void sendToGM(String message)
     {
@@ -143,7 +161,7 @@ class GameSession implements Runnable
             }
             catch(IOException e)
             {
-                System.out.println("Error sending to Game Master: " + e.getMessage());
+                System.out.println("\nError sending message to Game Master: " + e.getMessage());
             }
         }
         else
@@ -155,18 +173,20 @@ class GameSession implements Runnable
             }
             catch(IOException e)
             {
-                System.out.println("Error sending to Game Master: " + e.getMessage());
+                System.out.println("\nError sending message to Game Master: " + e.getMessage());
             }
         }
     }
 
     /**
-     * @brief Sends a message to the Guesser
+     * Sends a message to the Guesser.
      * 
-     * @param message The message to send
+     * Determines which player is the Guesser and sends the message 
+     * to the appropriate output stream. If a network error occurs 
+     * (typically due to client disconnect), the error is logged but 
+     * the game continues.
      * 
-     * @details Determines which player is the Guesser and
-     * sends the message to the appropriate output stream.
+     * @param message The message to send.
      */
     private void sendToGuesser(String message)
     {
@@ -179,7 +199,7 @@ class GameSession implements Runnable
             }
             catch(IOException e)
             {
-                System.out.println("Error sending to Guesser: " + e.getMessage());
+                System.out.println("\nError sending message to Guesser: " + e.getMessage());
             }
         }
         else
@@ -191,18 +211,39 @@ class GameSession implements Runnable
             }
             catch(IOException e)
             {
-                System.out.println("Error sending to Guesser: " + e.getMessage());
+                System.out.println("\nError sending message to Guesser: " + e.getMessage());
             }
         }
     }
 
     /**
-     * @brief Receives a message from the Game Master
+     * Sends a message to both players simultaneously.
      * 
-     * @return The message received
+     * @param message The message to send.
+     */
+    private void sendToBoth(String message)
+    {
+        sendToGM(message);
+        sendToGuesser(message);
+    }
+
+    /**
+     * Creates a visual separation between the game and other console messages.
      * 
-     * @details Determines which player is the Game Master and
+     * Sends a message containing a long sequence of underscores to both players.
+     */
+    private void sendVisualSeparator()
+    {
+        sendToBoth("________________________________________");
+    }
+
+    /**
+     * Receives a message from the Game Master.
+     * 
+     * Determines which player is the Game Master and
      * receives the message from the appropriate input stream.
+     * 
+     * @return The message received, or empty string if connection fails.
      */
     private String receiveFromGM()
     {
@@ -216,7 +257,7 @@ class GameSession implements Runnable
             }
             catch (IOException e)
             {
-                System.out.println("Error receiving from Game Master: " + e.getMessage());
+                System.out.println("\nError receiving from Game Master: " + e.getMessage());
             }
         }
         else
@@ -227,7 +268,7 @@ class GameSession implements Runnable
             }
             catch (IOException e)
             {
-                System.out.println("Error receiving from Game Master: " + e.getMessage());
+                System.out.println("\nError receiving from Game Master: " + e.getMessage());
             }
         }
 
@@ -235,12 +276,12 @@ class GameSession implements Runnable
     }
 
     /**
-     * @brief Receives a message from the Guesser
+     * Receives a message from the Guesser.
      * 
-     * @return The message received
-     * 
-     * @details Determines which player is the Guesser and
+     * Determines which player is the Guesser and
      * receives the message from the appropriate input stream.
+     * 
+     * @return The message received, or empty string if connection fails.
      */
     private String receiveFromGuesser()
     {
@@ -254,7 +295,7 @@ class GameSession implements Runnable
             }
             catch (IOException e)
             {
-                System.out.println("Error receiving from Guesser: " + e.getMessage());
+                System.out.println("\nError receiving from Guesser: " + e.getMessage());
             }
         }
         else
@@ -265,7 +306,7 @@ class GameSession implements Runnable
             }
             catch (IOException e)
             {
-                System.out.println("Error receiving from Guesser: " + e.getMessage());
+                System.out.println("\nError receiving from Guesser: " + e.getMessage());
             }
         }
 
@@ -273,9 +314,9 @@ class GameSession implements Runnable
     }
 
     /**
-     * @brief Executes the game session between the two players
+     * Executes the game session between the two players.
      * 
-     * @details Main game loop that:
+     * Main game loop phases:
      * 1. Introduces players to each other
      * 2. Assigns and communicates player roles
      * 3. Prompts the Game Master to choose a subject
@@ -289,29 +330,40 @@ class GameSession implements Runnable
      */
     public void run()
     {
-        // phase 1: player introduction
+        sendVisualSeparator();
+
+        // Phase 1: Player Introduction
         sendToGM("\nYOUR OPPONENT IS " + guesser.getUsername());
         sendToGuesser("\nYOUR OPPONENT IS " + gameMaster.getUsername());
 
-        int decisionGM = 0;
         boolean playAgain = true;
         while(playAgain)
         {
-            // phase 2: role assignment
+            // Phase 2: Role Assignment
             assignRoles(player1, player2);
 
+            sendVisualSeparator();
             sendToGM("\nYou are the Game Master.");
             sendToGuesser("\nYou are the Guesser.");
 
-            // phase 3: game master chooses a subject
-            sendToGM("\nChoose a subject: ");
+            // Phase 3: Game Master Chooses a Subject
             sendToGuesser("\n" + gameMaster.getUsername() + " is thinking of a subject...");
             
-            String subject = receiveFromGM();
+            String subject = "";
+
+            // Ensure we receive a non-empty question from the Guesser
+            // Empty questions could occur from network issues or accidental sends
+            while (subject.trim().isEmpty())
+            {
+                sendToGM("\nChoose a subject: ");
+
+                subject = receiveFromGM();
+            }
+
 
             sendToGuesser("\n" + gameMaster.getUsername() + " has chosen a subject.");
 
-            // phase 4: question and answer process
+            // Phase 4: Question and Answer Process
             boolean win = false;
             int count = 0;
             while(!win && count < 20)
@@ -322,6 +374,8 @@ class GameSession implements Runnable
 
                 sendToGM("\n" + guesser.getUsername() + " is thinking of a question...");
 
+                // Ensure we recieve a non-empty answer from the Game Master
+                // Empty answers could occur from network issues or accidental sends
                 while (question.trim().isEmpty())
                 {
                     sendToGuesser("\nEnter your question: ");
@@ -332,9 +386,8 @@ class GameSession implements Runnable
                 count++;
 
                 sendToGM("\nQuestion: " + question);
-                
-                // fix input edge cases in GameSession and Client thread
-                while (answerIn != 'y' && answerIn != 'n' && answerIn != 'm' && answerIn != 'c')
+
+                while ((answerIn != 'y' && answerIn != 'n' && answerIn != 'm' && answerIn != 'c'))
                 {
                     sendToGM("\n(Y)es, (N)o, (M)aybe, (C)orrect\nEnter your answer: ");
 
@@ -343,11 +396,11 @@ class GameSession implements Runnable
 
                 answerOut = Answer.fromChar(answerIn);
 
-                // phase 5.0: determining win/loss
+                // Phase 5.0: Determining Win/Loss
                 if (answerIn == 'c')
                 {
                     sendToGuesser("\nYou won! The answer was " + subject + ".");
-                    sendToGM("\nYou lose!");
+                    sendToGM("\nYou lost!");
 
                     win = true;
                 }
@@ -357,34 +410,68 @@ class GameSession implements Runnable
                 }
             }
 
-            // phase 5.1: determining win/loss
+            // Phase 5.1: Determining Win/Loss
             if (count == 20)
             {
                 sendToGM("\nYou won! " + guesser.getUsername() + " ran out of questions.");
-                sendToGuesser("\nYou lose! The answer was '" + subject + "'.");
+                sendToGuesser("\nYou lost! The answer was '" + subject + "'.");
             }
 
-            // phase 6: play again
-
-            // implement a proper play again section
-            // asks both players simultaneously and they can change their answers within a 30 sec frame
-            // playAgain thread 
+            // Phase 6: Play again
 
             sendToGM("\nPLAY AGAINST " + guesser.getUsername() + " AGAIN?");
             sendToGuesser("\nPLAY AGAINST " + gameMaster.getUsername() + " AGAIN?");
 
-            while (decisionGM != 'y' && decisionGM != 'n')
+            // Both players are prompted simultaneously to prevent one player from
+            // waiting indefinitely for the other. Each gets 15 seconds to respond.
+            // If either times out or declines, the session ends gracefully.
+            Future<Boolean> decisionGM = Server.threadPool.submit(new PlayAgain(gameMaster));
+            Future<Boolean> decisionGuesser = Server.threadPool.submit(new PlayAgain(guesser));
+            
+            try
             {
-                sendToGM("\n(Y)es, (N)o\nEnter your decision: ");
+                Boolean againGM = decisionGM.get(15, TimeUnit.SECONDS);
+                Boolean againGuesser = decisionGuesser.get(15, TimeUnit.SECONDS);
 
-                decisionGM = receiveFromGM().toLowerCase().charAt(0);
+                playAgain = againGM && againGuesser;
             }
-
-            if (decisionGM == 'n')
+            catch(TimeoutException e)
             {
-                sendToGuesser("\nThe Game Master has chosen to end the game.");
+                System.out.println("\nPlay again frame timed out: " + e.getMessage());
+                decisionGM.cancel(true);
+                decisionGuesser.cancel(true);
+
+                sendToBoth("\nPlay again timed out!");
+
                 playAgain = false;
             }
+            catch(InterruptedException e)
+            {
+                System.out.println("\nThread was interrupted during play again frame: " + e.getMessage());
+            }
+            catch(ExecutionException e)
+            {
+                Throwable cause = e.getCause();
+
+                if (cause != null)
+                {
+                    System.out.println("\nCause of the exception: " + cause);
+                }
+                else
+                {
+                    System.out.println("\nNo cause found for this exception.");
+                }
+            }
         }
+
+        sendToBoth("\nBoth of you didn't want to play again.\nSession ending...");
+
+        sendVisualSeparator();
+
+        Server.playingList.removeElement(player1);
+        Server.playingList.removeElement(player2);
+
+        Server.threadPool.submit(new PlayerManager(player1));
+        Server.threadPool.submit(new PlayerManager(player2));
     }
-}
+} 

@@ -4,14 +4,18 @@ import java.util.Vector;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/*
+ *  future enhancement: 
+ *  - implement graceful shutdown of server with proper resource cleanup
+ *  - receive port number from command line arguments
+ */
+
 /**
- * @class Server
- * @brief Server implementation for a multiplayer 20 Questions game
+ * Server implementation for a multiplayer 20 Questions game.
  *
- * @details This server manages client connections, player matchmaking,
- * and game sessions using a multi-threaded architecture. It accepts
- * connections on a specified port and assigns each client to a handler
- * thread from a fixed-size thread pool.
+ * This server manages client connections. It accepts connections 
+ * on a specified port and assigns each client to a handler thread 
+ * from a fixed-size thread pool.
  */
 public class Server 
 {
@@ -19,64 +23,61 @@ public class Server
     private ServerSocket serverSocket;   
 
     /**
-     * @brief Thread pool that manages concurrent client connections
+     * Thread pool that manages concurrent client connections.
      * 
-     * @details Limited to 20 concurrent threads to prevent resource exhaustion
-     * while supporting multiple simultaneous game sessions. Static to allow
-     * access across all server components.
+     * Limited to 20 concurrent threads to prevent resource exhaustion while 
+     * supporting multiple simultaneous game sessions. Static to allow access 
+     * across all server components.
      */
     protected static ExecutorService threadPool = Executors.newFixedThreadPool(20);
 
     /**
-     * @brief Used to keep track of all players currently connected
-     * 
-     * @details Makes resource cleanup easier 
+     * Tracks all players currently connected, making resource cleanup easier.
      */
     protected static Vector<Player> allPlayers = new Vector<>();
 
     /**
-     * @brief Tracks players waiting to be matched with opponents
+     * Tracks players waiting to be matched with opponents.
      * 
-     * @details Players are added here when they connect and removed when matched
+     * Players are added here when they connect and removed when matched
      * with another player to form a game session. Used by the matchmaking system.
      */
     protected static Vector<Player> waitingQueue = new Vector<>();   
 
     /**
-     * @brief Tracks players currently participating in active games
+     * Tracks players currently participating in active games.
      * 
-     * @details Players move here from the waitingQueue when matched and return to
+     * Players move here from the waitingQueue when matched and return to the
      * waitingQueue when their game ends. Used to monitor active game sessions.
      */
-    protected static Vector<Player> playingQueue = new Vector<>();   
+    protected static Vector<Player> playingList = new Vector<>();   
     
     /**
-     * @brief Constructor that initializes and runs the server
-     * @param port The port number on which the server listens for connections
+     * Constructor that initializes and runs the server.
      * 
-     * @details Creates a server socket that continuously accepts client connections
+     * Creates a server socket that continuously accepts client connections
      * and passes each connected client to a LogPlayer handler running in the thread 
      * pool. The server runs indefinitely until interrupted by an exception or
      * external termination signal.
+     * 
+     * @param port The port number on which the server listens for connections.
      */
     public Server(int port)
     {
         try
         {
-            serverSocket = new ServerSocket(port);  // create server socket
+            serverSocket = new ServerSocket(port);
             System.out.println("Server started.");
 
-            // implement a more graceful shutdown mechanism
-            // at the moment, it only terminates if there's an exception
-            // or ctrl+c is pressed (my method for testing)
+            // at the moment, it only terminates if ctrl+c is pressed
             while (true)
             {
                 System.out.println("\nWaiting for players...");
                 
-                clientSocket = serverSocket.accept();            // accept client connection
+                clientSocket = serverSocket.accept();  
                 System.out.println("\nPlayer connected.");    
 
-                threadPool.submit(new LogPlayer(clientSocket));  // pass client to handler thread
+                threadPool.submit(new LogPlayer(clientSocket));
             }
         }
         catch(IOException e)
@@ -85,7 +86,7 @@ public class Server
         }
         finally 
         {   
-            // close resources
+            // Clean up resources
             try 
             {
                 if (serverSocket != null) serverSocket.close();
@@ -93,7 +94,7 @@ public class Server
                 
                 threadPool.shutdown();
                 
-                // close all player connections
+                // Close all player connections
                 for (Player player : allPlayers) 
                 {
                     if (player.getSocket() != null) player.getSocket().close();
@@ -106,16 +107,15 @@ public class Server
         }
     }
 
-    // receive port number from command line arguments (future version)
-
     /**
-     * @brief Entry point for the game server application
-     * @param args Command line arguments (not used)
+     * Entry point for the game server application.
      * 
-     * @details Creates a Server instance on port 5000 to start the game server.
+     * Creates a Server instance on port 5000 to start the game server.
+     * 
+     * @param args Command line arguments (not used)
      */
     public static void main(String args[])
     {
-        Server server = new Server(5000); // create server on port 5000
+        Server server = new Server(5000);  // create server on port 5000
     }
 }
