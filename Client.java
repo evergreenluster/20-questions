@@ -7,7 +7,7 @@ import java.util.Scanner;
  */
 public class Client
 {
-    private Socket clientSocket;    
+    private Socket clientSocket;
     private DataInputStream in;    
     private DataOutputStream out;   
 
@@ -23,6 +23,7 @@ public class Client
         String message = "";                       // used to store server messages
         String input = "";                         // used to store client messages
 
+        // attempts to connect to the server
         try
         {
             clientSocket = new Socket(addr, port); 
@@ -30,13 +31,15 @@ public class Client
             out = new DataOutputStream(clientSocket.getOutputStream());
             in = new DataInputStream(new BufferedInputStream(clientSocket.getInputStream())); 
 
+            // main communication loop: receive message, check if input needed, respond 
             while (true)
             {
                 try
                 {
                     message = in.readUTF();
                 }
-                catch(IOException e)
+                // connection lost or server server disconnected
+                catch(IOException e)  
                 {
                     System.out.println("\nDisconnected from server.");  
 
@@ -50,7 +53,7 @@ public class Client
 
                 System.out.print(message);
 
-                // All messages requiring input end in ": "
+                // all messages requiring input end in ": "
                 if (message.charAt(message.length() - 2) == ':')
                 {
                     input = scanner.nextLine();
@@ -65,9 +68,10 @@ public class Client
                         System.out.println("Error sending to server: " + e.getMessage());
                     }
                 }
-                else
+                // outputs a newline for consistent formatting when not prompting for input
+                else 
                 {
-                    System.out.print("\n");  // Outputting a newline for consistent formatting
+                    System.out.print("\n");  
                 }    
             }
         }

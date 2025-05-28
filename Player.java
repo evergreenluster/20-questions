@@ -13,7 +13,7 @@ import java.net.*;
 public class Player 
 {
     private final Socket socket;
-    private String username = " ";
+    private String username = "";
     private final DataInputStream input;
     private final DataOutputStream output;
 
@@ -39,8 +39,6 @@ public class Player
         this.input = input;
         this.output = output;
     }
-
-    
 
     /**
      * Retrieves the player's socket connection.

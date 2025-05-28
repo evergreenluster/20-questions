@@ -1,5 +1,10 @@
 import java.io.*;
 
+/*
+ *  future enhancement:
+ *  - handle numberformatexception when player enters non-numeric menu choice
+ */
+
 /**
  * Manages player lifecycle and menu interactions throughout the game.
  * 
@@ -63,9 +68,9 @@ public class PlayerManager implements Runnable
      * This method manages the complete player experience outside of games:
      * 1. Displays menu options repeatedly until player makes a choice
      * 2. Executes the chosen action (play, change username, or exit)
-     * 3. For play option: transfers player to matchmaking system
-     * 4. For username change: prompts for and updates player's display name
-     * 5. For exit: cleanly disconnects player and releases resources
+     *    For play option: transfers player to matchmaking system
+     *    For username change: prompts for and updates player's display name
+     *    For exit: cleanly disconnects player and releases resources
      * 
      * The loop continues until the player chooses to play a game or exit,
      * allowing multiple username changes without reconnection.
@@ -74,10 +79,11 @@ public class PlayerManager implements Runnable
     {
         boolean exit = false;
         while (!exit)
-        {
+        {   
             showMainMenu();
 
             int decision = 0;
+            // phase 1: displays menu items until players makes a choice
             while (decision != 1 && decision != 2 && decision != 3)
             {
                 try 
@@ -99,21 +105,22 @@ public class PlayerManager implements Runnable
                 }
             }
 
+            // phase 2: executes the chosen action
             switch (decision)
             {
-                // Play game
+                // play game
                 case 1 ->
                 {
                     Server.threadPool.submit(new MatchPlayer(player));
 
                     exit = true;
                 }
-                // Change username
+                // change username
                 case 2 ->
                 {
                     String username = "";
 
-                    // Ensure new username isn't empty
+                    // ensure new username isn't empty
                     while (username.trim().isEmpty())
                     {
                         try
@@ -129,7 +136,7 @@ public class PlayerManager implements Runnable
 
                     player.setUsername(username);
                 }
-                // Exit game
+                // exit game
                 case 3 ->
                 {
                     Server.allPlayers.removeElement(player);

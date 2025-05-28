@@ -37,7 +37,7 @@ public class LogPlayer implements Runnable
 
         try 
         {
-            // Wrap streams in buffered versions for better performance
+            // wrap streams in buffered versions for better performance
             in = new DataInputStream(new BufferedInputStream(clientSocket.getInputStream()));
             out = new DataOutputStream(clientSocket.getOutputStream());
         }
@@ -73,19 +73,19 @@ public class LogPlayer implements Runnable
         
             username = in.readUTF();
             
-            // Create Player object with connection details and username
+            // create player object with connection details and username
             Player player = new Player(clientSocket, username, in, out);
 
             Server.allPlayers.addElement(player);
             
-            // Transfer control to PlayerManager for menu and matchmaking
+            // transfer control to playermanager for menu and matchmaking
             Server.threadPool.submit(new PlayerManager(player));
         }
         catch (IOException e)
         {
             System.out.println("Error while collecting username: " + e.getMessage());
 
-            // Clean up connection if onboarding fails
+            // clean up connection if onboarding fails
             try
             {
                 clientSocket.close();

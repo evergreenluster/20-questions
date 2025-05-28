@@ -7,6 +7,10 @@ import java.util.concurrent.*;
  *  - handle player disconnect mid-game 
  *  - function to handle graceful exit when playAgain is false
  *  - handle empty answer input edge case 
+ *  - add gameID functionality for easier debugging
+ * 
+ *  new handler class:
+ *  - displayManager (handles titles and visual separators)
  */
 
 /**
@@ -75,8 +79,6 @@ class GameSession implements Runnable
         }
     }
 
-    // future enhancement: add gameID functionality for easier debugging
-
     /** First player connected to this game session. */
     private final Player player1;
     /** Second player connected to this game session. */
@@ -144,9 +146,9 @@ class GameSession implements Runnable
      * Sends a message to the Game Master.
      * 
      * Determines which player is the Game Master and sends the message 
-     * to the appropriate output stream. If a network error occurs 
+     * to the appropriate output stream. For now, if a network error occurs 
      * (typically due to client disconnect), the error is logged but 
-     * the game continues.
+     * the game continues. 
      * 
      * @param message The message to send.
      */
@@ -182,7 +184,7 @@ class GameSession implements Runnable
      * Sends a message to the Guesser.
      * 
      * Determines which player is the Guesser and sends the message 
-     * to the appropriate output stream. If a network error occurs 
+     * to the appropriate output stream. For now, if a network error occurs 
      * (typically due to client disconnect), the error is logged but 
      * the game continues.
      * 
@@ -332,27 +334,27 @@ class GameSession implements Runnable
     {
         sendVisualSeparator();
 
-        // Phase 1: Player Introduction
+        // phase 1: player introduction
         sendToGM("\nYOUR OPPONENT IS " + guesser.getUsername());
         sendToGuesser("\nYOUR OPPONENT IS " + gameMaster.getUsername());
 
         boolean playAgain = true;
         while(playAgain)
         {
-            // Phase 2: Role Assignment
+            // phase 2: role assignment
             assignRoles(player1, player2);
 
             sendVisualSeparator();
             sendToGM("\nYou are the Game Master.");
             sendToGuesser("\nYou are the Guesser.");
 
-            // Phase 3: Game Master Chooses a Subject
+            // phase 3: game master chooses a subject
             sendToGuesser("\n" + gameMaster.getUsername() + " is thinking of a subject...");
             
             String subject = "";
 
-            // Ensure we receive a non-empty question from the Guesser
-            // Empty questions could occur from network issues or accidental sends
+            // ensure we receive a non-empty question from the guesser
+            // empty questions could occur from network issues or accidental sends
             while (subject.trim().isEmpty())
             {
                 sendToGM("\nChoose a subject: ");
@@ -363,19 +365,19 @@ class GameSession implements Runnable
 
             sendToGuesser("\n" + gameMaster.getUsername() + " has chosen a subject.");
 
-            // Phase 4: Question and Answer Process
+            // phase 4: question and answer process
             boolean win = false;
             int count = 0;
             while(!win && count < 20)
             {
                 String question = "";
-                char answerIn = ' ';
-                Answer answerOut;
+                char answerIn = ' ';  // raw input character from game master
+                Answer answerOut;     // validated enum value sent to guesser
 
                 sendToGM("\n" + guesser.getUsername() + " is thinking of a question...");
 
-                // Ensure we recieve a non-empty answer from the Game Master
-                // Empty answers could occur from network issues or accidental sends
+                // ensure we recieve a non-empty answer from the game master
+                // empty answers could occur from network issues or accidental sends
                 while (question.trim().isEmpty())
                 {
                     sendToGuesser("\nEnter your question: ");
@@ -396,7 +398,7 @@ class GameSession implements Runnable
 
                 answerOut = Answer.fromChar(answerIn);
 
-                // Phase 5.0: Determining Win/Loss
+                // phase 5.0: determining win/loss (correct answer guessed)
                 if (answerIn == 'c')
                 {
                     sendToGuesser("\nYou won! The answer was " + subject + ".");
@@ -410,32 +412,31 @@ class GameSession implements Runnable
                 }
             }
 
-            // Phase 5.1: Determining Win/Loss
+            // phase 5.1: determining win/loss (question limit reached)
             if (count == 20)
             {
                 sendToGM("\nYou won! " + guesser.getUsername() + " ran out of questions.");
                 sendToGuesser("\nYou lost! The answer was '" + subject + "'.");
             }
 
-            // Phase 6: Play again
-
+            // phase 6: play again
             sendToGM("\nPLAY AGAINST " + guesser.getUsername() + " AGAIN?");
             sendToGuesser("\nPLAY AGAINST " + gameMaster.getUsername() + " AGAIN?");
 
-            // Both players are prompted simultaneously to prevent one player from
-            // waiting indefinitely for the other. Each gets 15 seconds to respond.
-            // If either times out or declines, the session ends gracefully.
+            // both players are asked if they want to play against the same opponent again
             Future<Boolean> decisionGM = Server.threadPool.submit(new PlayAgain(gameMaster));
             Future<Boolean> decisionGuesser = Server.threadPool.submit(new PlayAgain(guesser));
             
-            try
+            // both players have 15 seconds to submit their answers
+            try 
             {
                 Boolean againGM = decisionGM.get(15, TimeUnit.SECONDS);
                 Boolean againGuesser = decisionGuesser.get(15, TimeUnit.SECONDS);
 
                 playAgain = againGM && againGuesser;
             }
-            catch(TimeoutException e)
+            // if either times out or declines, the session ends gracefully
+            catch(TimeoutException e) 
             {
                 System.out.println("\nPlay again frame timed out: " + e.getMessage());
                 decisionGM.cancel(true);
@@ -443,7 +444,7 @@ class GameSession implements Runnable
 
                 sendToBoth("\nPlay again timed out!");
 
-                playAgain = false;
+                playAgain = false;  // main game loop is exited
             }
             catch(InterruptedException e)
             {
@@ -464,6 +465,7 @@ class GameSession implements Runnable
             }
         }
 
+        // notify players of impending disconnect
         sendToBoth("\nBoth of you didn't want to play again.\nSession ending...");
 
         sendVisualSeparator();
