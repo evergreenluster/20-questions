@@ -53,7 +53,7 @@ public class PlayAgain implements Callable<Boolean>
             }
             catch(IOException e)
             {
-                throw new Exception("Player communication failed during play-again query", e);
+                throw new Exception("Player communication failed during play-again query: " +  e.getMessage());
             }
         }
 

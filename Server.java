@@ -86,7 +86,7 @@ public class Server
         }
         finally 
         {   
-            // Clean up resources
+            // clean up resources
             try 
             {
                 if (serverSocket != null) serverSocket.close();
@@ -94,7 +94,7 @@ public class Server
                 
                 threadPool.shutdown();
                 
-                // Close all player connections
+                // close all player connections
                 for (Player player : allPlayers) 
                 {
                     if (player.getSocket() != null) player.getSocket().close();
