@@ -5,6 +5,8 @@ A multiplayer 20 Questions game with concurrent player management.
 
 I built this project to learn socket programming and multithreading - two areas where I had limited experience but wanted to develop my skills.
 
+My plan is to learn Spring Boot to rebuild this with a web interface, which will let me develop my HTML, CSS, and JavaScript skills alongside backend web development.
+
 ## Features
 
 * **Multiplayer 20 Questions** - Two players take turns being Game Master and Guesser.
